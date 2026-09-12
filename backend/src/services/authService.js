@@ -5,13 +5,12 @@ import dotenv from 'dotenv';
 dotenv.config({path:'./.env'});
 import User from '../models/user.js';
 
-export const createUser = async(req,res)=>{
+export async function createUser(username,email,interests,skills,password){
+    if(!username || !email || !interests || !skills || !password){
+        throw new ApiError(400,"Missing required fields");
+    }
+    
     try{
-        const {username,email,interests,skills,password} = req.body;
-        if(!username || !email || !interests || !skills || !password){
-            throw new ApiError(400,"Missing required fields");
-        }
-
         const existingUser = await User.findOne({$or:[{username},{email}]});
         if(existingUser){
             throw new ApiError(
