@@ -4,6 +4,6 @@ import * as userController from '../controllers/userController.js';
 
 const router = express.Router();
 
-router.post('/me',verifyJWT,userController.getUser);
+router.get("/me",verifyJWT,userController.getUser);
 
 export default router;

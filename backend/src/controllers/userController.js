@@ -4,5 +4,5 @@ import { ApiResponse } from '../utils/ApiResponse.js';
 
 export const getUser = asyncHandler(async(req,res)=>{
     const response = await userService.getUser(req,res);
-    return new ApiResponse(201,response,"User retrieved successfully");
+    return res.status(201).json(response,"User retrieved successfully");
 }); 

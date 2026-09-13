@@ -1,8 +1,7 @@
 import {hashPassword, comparePassword} from '../utils/password.js';
 import {generateToken } from '../utils/jwt.js';
 import { ApiError } from "../utils/ApiError.js";
-import dotenv from 'dotenv';
-dotenv.config({path:'./.env'});
+import { ApiResponse } from "../utils/ApiResponse.js";
 import User from '../models/user.js';
 
 export async function createUser(username,email,interests,skills,password){
@@ -11,30 +10,42 @@ export async function createUser(username,email,interests,skills,password){
     }
     
     try{
-        const existingUser = await User.findOne({$or:[{username},{email}]});
+        // console.log("Checking existing user with email:",email);
+
+        const existingUser = await User.findOne({email});
         if(existingUser){
             throw new ApiError(
                 400,"User with this username or email already exists"
             );
         }
 
+        // console.log("existingUser checked",existingUser);
+
         const hashedPassword = await hashPassword(password);
+
+        // console.log("hashedPassword",hashedPassword);
 
         const newUser = await User.create({
             username,
             email,
             interests,
             skills,
-            hashedPassword
+            password:hashedPassword
         });
+
+        // await newUser.save();
+        // console.log("newUser created",newUser);
 
         if(!newUser){
             throw new ApiError(500,"Error creating user");
         }
-
-        return new ApiResponse(201,newUser,"User created successfully");
+        
+        const createdUser = await User.findById(newUser._id).select("-password");
+        
+        return new ApiResponse(201,createdUser,"User created successfully");
     }
     catch(error){
+        // console.error("Error creating user:",error);
         throw new ApiError(500,"Error creating user");
     }
 }
@@ -64,7 +75,7 @@ export async function loginUser(email,password) {
             );
         }
 
-        await user.findById(user._id).select("-password");
+        // await User.findById(user._id).select("-password");   
 
         const token = generateToken({
             id: user._id,
