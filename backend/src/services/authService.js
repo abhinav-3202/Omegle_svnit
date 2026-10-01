@@ -37,7 +37,7 @@ export async function createUser(username,email,interests,skills,password){
         // console.log("newUser created",newUser);
 
         if(!newUser){
-            throw new ApiError(500,"Error creating user");
+            throw new ApiError(500,"New user is not created ");
         }
         
         const createdUser = await User.findById(newUser._id).select("-password");
@@ -46,7 +46,7 @@ export async function createUser(username,email,interests,skills,password){
     }
     catch(error){
         // console.error("Error creating user:",error);
-        throw new ApiError(500,"Error creating user");
+        throw new ApiError(500,"Error creating user because whole process got terminated");
     }
 }
 

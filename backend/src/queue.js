@@ -19,7 +19,7 @@ class MatchMakingQueue {
 
     findMatch(user){
         for(const waitingUser of this.users){
-            if(waitingUser._id.toString() === user._id.toString){
+            if(waitingUser._id.toString() === user._id.toString()){
                 continue;
             }
 
