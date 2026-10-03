@@ -4,13 +4,31 @@ class MatchMakingQueue {
     }
 
     addUser(user){
-        this.users.push(user);
+        const userId = user._id.toString();
+
+        const alreadyExists = this.users.some(
+            waitingUser => waitingUser._id.toString() === userId
+        );
+
+        if(!alreadyExists){
+            this.users.push(user);
+            return true; // User added successfully
+        }
+        else return false; // User already exists in the queue
     }
 
     removeUser(userId){
+        const id = userId.toString();
         this.users = this.users.filter(
-            user => user._id.toString() !== userId.toString()
+            user => user._id.toString() !== id
         ); // overwriting the users array with a new array that excludes the user with the specified userId
+    }
+
+    isUserWaiting(userId){
+        const id = userId.toString();
+        return this.users.some(
+            user => user._id.toString() === id
+        );
     }
 
     getUsers(){
@@ -20,7 +38,7 @@ class MatchMakingQueue {
     findMatch(user){
         for(const waitingUser of this.users){
             if(waitingUser._id.toString() === user._id.toString()){
-                continue;
+                continue; // Skip if it's the same user semding multiple join queue request
             }
 
             const commonInterests=user.interests.filter(

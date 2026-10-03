@@ -1,6 +1,16 @@
 import matchMakingQueue from "../singletons/queueSingleton.js";
 
 export const joinQueue = async(user) => {
+
+    const userId = user._id.toString();
+
+    if(matchMakingQueue.isUserWaiting(userId)){
+        return {
+            matched: false,
+            message: "User is already in the queue."
+        };
+    }
+    
     const existingMatch = matchMakingQueue.findMatch(user);
 
     if(existingMatch){
