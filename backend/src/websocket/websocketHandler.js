@@ -1,29 +1,34 @@
-export const handleWebSocketConnection = (socket, request) => {
-    console.log('Client connected');
+import connectionManager from '../singletons/connectionManager.js';
+import {authenticateWebSocket} from './websocketAuth.js';
 
-    socket.send(
-        JSON.stringify({
-            type:"CONNECTED",
-            message:"websocket connection established"
-        })
-    )
+export const handleWebSocketConnection = async (socket, request) => {
 
-    socket.on("message",(message)=>{
-        console.log("Message Recieved",message.toString());
+    try{
+        const user = await authenticateWebSocket(request);
+
+        const userId = user._id.toString();
+
+        connectionManager.addConnection(userId, socket);
 
         socket.send(
             JSON.stringify({
-                type:"ECHO",
-                message:message.toString(),
+                type:"CONNECTED",
+                message:"WebSocket Authentication successful",
+                userId
             })
         );
-    })
 
-    socket.on("close",()=>{
-        console.log("Client disconnected");
-    });
+        socket.on("close",()=>{
+           connectionManager.removeConnection(userId,socket);
+        });
 
-    socket.on("error",(error)=>{
-        console.error("Websocket error:",error.message);
-    })
+        socket.on("error",(error)=>{
+            console.error("Websocket error:",error.message);
+        })
+    }catch(error){
+        console.log(error.message);
+        socket.close(1008,"Unauthorized");
+    }
+
+    
 }
