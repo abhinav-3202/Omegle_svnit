@@ -2,6 +2,7 @@ import connectionManager from '../singletons/connectionManager.js';
 import {authenticateWebSocket} from './websocketAuth.js';
 import { joinQueue, leaveQueue, getQueue } from '../services/queueService.js';
 import matchManager from '../singletons/matchManager.js';
+import { relayWebRTCSignal } from '../services/webrtcSignalingService.js';
 
 export const handleWebSocketConnection = async (socket, request) => {
 
@@ -116,6 +117,96 @@ export const handleWebSocketConnection = async (socket, request) => {
                         });
                     }
                 }
+                else if(message.type ==="SKIP"){
+                    const match = matchManager.getMatchByUserId(userId);
+                    if(!match){
+                        socket.send(
+                            JSON.stringify({
+                                type:"ERROR",
+                                message:"You are not in an active match."
+                            })
+                        );
+                        return;
+                    }
+                    
+                    // end the current match
+                    const endedMatch = matchManager.endMatch(match.matchId);
+
+                    if(!endedMatch){
+                        socket.send(
+                            JSON.stringify({
+                                type:"ERROR",
+                                message:"Unable to end match. Please try again later."
+                            })
+                        );
+                        return;
+                    }
+
+                    const partnerId = endedMatch.participants.find(
+                        participantId => participantId !== userId
+                    );
+
+                    connectionManager.sendMessage(partnerId,{
+                        type:"PARTNER_SKIPPED",
+                        matchId:endedMatch.matchId,
+                        message:"Your partner has skipped the match."
+                    });//because partner info is in connectionmanager that's why
+
+                    socket.send(JSON.stringify({
+                        type:"MATCH_ENDED",
+                        matchId:endedMatch.matchId,
+                        result:"SKIPPED",
+                        message:"You have skipped the match.Finding a new match..."
+                    }));
+
+                    const result = await joinQueue(user);
+
+                    if(!result.matched){
+                        socket.send(
+                            JSON.stringify({
+                                type:"QUEUE_JOINED",
+                                message:result.message
+                            })
+                        );
+                        return;
+                    }
+
+                    const newPartnerId = result.user._id.toString();
+
+                    const newMatch = matchManager.createMatch(userId,newPartnerId);
+
+                    if(!newMatch){
+                        socket.send(JSON.stringify({
+                            type:"ERROR",
+                            message:"Unable to create a new match .Please try again later."
+                        }))
+                        return;
+                    }
+
+                    connectionManager.sendMessage(userId,{
+                        type:"MATCH_FOUND",
+                        matchId:newMatch.matchId,
+                        partnerId:newPartnerId
+                    })
+
+                    connectionManager.sendMessage(newPartnerId,{
+                        type:"MATCH_FOUND",
+                        matchId:newMatch.matchId,
+                        partnerId:userId
+                    })
+                }
+                else if(
+                    message.type ==="WEBRTC_OFFER" ||
+                    message.type ==="WEBRTC_ANSWER" ||
+                    message.type ==="ICE_CANDIDATE"
+                ){
+                    relayWebRTCSignal(
+                        socket,
+                        userId,
+                        message.type,
+                        message.payload
+                    );
+                }
                 else{
                     socket.send(JSON.stringify({
                         type:"ERROR",
@@ -130,9 +221,9 @@ export const handleWebSocketConnection = async (socket, request) => {
                 }));
             }
         })
-        socket.on("close",async(userId,socket)=>{
+        socket.on("close",async()=>{
             await leaveQueue(userId);
-
+ 
             const match = matchManager.getMatchByUserId(userId);
 
             if(match){
