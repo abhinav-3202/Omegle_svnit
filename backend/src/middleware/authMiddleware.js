@@ -11,7 +11,19 @@ export const verifyJWT = asyncHandler(async(req,res,next)=>{
     }
 
     const token = header.split(" ")[1];
-    const decodedToken = verifyToken(token);
+    let decodedToken;
+
+    try{
+        decodedToken = verifyToken(token);
+    }
+    catch(error){
+        if(error instanceof jwt.TokenExpiredError ||
+              error instanceof jwt.JsonWebTokenError||
+              error instanceof jwt.NotBeforeError){
+            throw new ApiError(401,"Invalid or expired token");
+        }
+        throw error;
+    }
 
     const user = await User.findById(decodedToken.id).select("-password");
     

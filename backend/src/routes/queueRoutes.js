@@ -6,7 +6,7 @@ const router = express.Router();
 
 router.post("/join",verifyJWT,joinQueue);
 router.delete("/leave",verifyJWT,leaveQueue);
-router.get("/",verifyJWT,getQueue);
+// router.get("/",verifyJWT,getQueue);
 
 export default router;
 
