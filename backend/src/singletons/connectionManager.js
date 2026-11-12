@@ -5,9 +5,19 @@ class ConnectionManager {
 
   addConnection(userId, socket) {
     const id = userId.toString();
+    // this.connections.set(id, socket);
+    const old = this.connections.get(id);
+    if (old && old !== socket) {
+        old.close(4000, "Replaced by a new connection");
+    }
     this.connections.set(id, socket);
 
     console.log(`User connected: ${id}`);
+
+    // A second tab or reconnect kills the live session. addConnection overwrites the old socket. 
+    // When the old socket later closes, its close handler runs leaveQueue and endMatch for that userId, which wrecks the new connection’s match.
+    // Only clean up if connectionManager.getConnection(userId) === socket. 
+    // Better, close the old socket explicitly when a new one arrives.
   }
 
   getConnection(userId) {

@@ -1,14 +1,16 @@
 import connectionManager from '../singletons/connectionManager.js';
-import {authenticateWebSocket} from './websocketAuth.js';
-import { joinQueue, leaveQueue, getQueue } from '../services/queueService.js';
+// import {authenticateWebSocket} from './websocketAuth.js';
+import { joinQueue, leaveQueue, requeueUser } from '../services/queueService.js';
 import matchManager from '../singletons/matchManager.js';
 import { relayWebRTCSignal } from '../services/webrtcSignalingService.js';
 
 export const handleWebSocketConnection = async (socket, request) => {
 
     try{
-        const user = await authenticateWebSocket(request);
+        // const user = await authenticateWebSocket(request);
 
+        const user = request.user;
+        // we are authenticating the user in the websocketServer.js only 
         const userId = user._id.toString();
 
         connectionManager.addConnection(userId, socket);
@@ -35,6 +37,7 @@ export const handleWebSocketConnection = async (socket, request) => {
                         const match = matchManager.createMatch(userId, matchedUserId);
                         
                         if(!match){
+                            await requeueUser(result.user); // don't lose the waiting partner
                             socket.send(
                                 JSON.stringify({
                                     type:"ERROR",
@@ -176,6 +179,7 @@ export const handleWebSocketConnection = async (socket, request) => {
                     const newMatch = matchManager.createMatch(userId,newPartnerId);
 
                     if(!newMatch){
+                        await requeueUser(result.user); // don't lose the waiting partner
                         socket.send(JSON.stringify({
                             type:"ERROR",
                             message:"Unable to create a new match .Please try again later."
@@ -222,6 +226,8 @@ export const handleWebSocketConnection = async (socket, request) => {
             }
         })
         socket.on("close",async()=>{
+            // a newer connection replaced this one -> don't tear down its queue/match state
+            if(connectionManager.getConnection(userId) !== socket) return;
             await leaveQueue(userId);
  
             const match = matchManager.getMatchByUserId(userId);
@@ -248,7 +254,7 @@ export const handleWebSocketConnection = async (socket, request) => {
             console.error("Websocket error:",error.message);
         })
     }catch(error){
-        console.log(error.message);
+        console.error("WebSocket authentication error:", error);
         socket.close(1008,"Unauthorized");
     }
 

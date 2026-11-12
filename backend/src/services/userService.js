@@ -3,16 +3,11 @@ import {ApiError} from '../utils/ApiError.js';
 import {ApiResponse} from '../utils/ApiResponse.js';
 
 export const getUser = async(req,res)=>{
-    try{
         const user = await User.findById(req.user._id).select("-password");
         if(!user){
             throw new ApiError(404,"User not found");
         }
 
-        return new ApiResponse(201,user,"User fetched successfully");
-    }
-    catch(error){
-        throw new ApiError(500,"Error fetching user");
-    }
+        return new ApiResponse(200,user,"User fetched successfully");
 }
 
